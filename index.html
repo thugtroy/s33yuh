@@ -21,6 +21,9 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
+    // Import App Check modules
+    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
       authDomain: "s33yuh-3cb81.firebaseapp.com",
@@ -33,6 +36,16 @@
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
+
+    // --- Firebase App Check debug mode ---
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('debug'), // site key není potřeba v debug módu
+      isTokenAutoRefreshEnabled: true
+    });
+
+    // Database
     const db = getDatabase(app);
 
     // Function to get user IP (free API)
