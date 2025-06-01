@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>s33yuh Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    img {
+      max-width: 100%;
+      max-height: 100vh;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="Tracker Image" />
+  
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
+      authDomain: "s33yuh-3cb81.firebaseapp.com",
+      databaseURL: "https://s33yuh-3cb81-default-rtdb.europe-west1.firebasedatabase.app",
+      projectId: "s33yuh-3cb81",
+      storageBucket: "s33yuh-3cb81.appspot.com",
+      messagingSenderId: "1004328351276",
+      appId: "1:1004328351276:web:549a980def23a4112c8389"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Funkce pro získání IP přes veřejný API
+    async function getIP() {
+      try {
+        const res = await fetch("https://api.ipify.org?format=json");
+        const data = await res.json();
+        return data.ip || "unknown";
+      } catch {
+        return "unknown";
+      }
+    }
+
+    (async () => {
+      const ip = await getIP();
+      const userAgent = navigator.userAgent;
+
+      const visitsRef = ref(db, "visits");
+      push(visitsRef, {
+        ip,
+        userAgent,
+        timestamp: serverTimestamp()
+      });
+    })();
+  </script>
+</body>
+</html>
