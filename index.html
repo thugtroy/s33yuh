@@ -1,32 +1,33 @@
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>s33yuh Tracker</title>
+  <meta charset="UTF-8">
+  <title>s33yuh</title>
   <style>
-    body {
+    html, body {
       margin: 0;
-      background: black;
+      padding: 0;
+      background-color: black;
+      height: 100%;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
     }
     img {
       max-width: 100%;
-      max-height: 100vh;
-      display: block;
+      height: auto;
     }
   </style>
 </head>
 <body>
-  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="Tracker Image" />
-  
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="s33yuh">
 
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+
+    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
       authDomain: "s33yuh-3cb81.firebaseapp.com",
@@ -37,31 +38,30 @@
       appId: "1:1004328351276:web:549a980def23a4112c8389"
     };
 
+    // Init Firebase
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+    const database = getDatabase(app);
 
-    // Funkce pro získání IP přes veřejný API
-    async function getIP() {
-      try {
-        const res = await fetch("https://api.ipify.org?format=json");
-        const data = await res.json();
-        return data.ip || "unknown";
-      } catch {
-        return "unknown";
-      }
-    }
+    // Získání dat o návštěvníku
+    const visitorData = {
+      userAgent: navigator.userAgent,
+      timestamp: new Date().toISOString()
+    };
 
-    (async () => {
-      const ip = await getIP();
-      const userAgent = navigator.userAgent;
-
-      const visitsRef = ref(db, "visits");
-      push(visitsRef, {
-        ip,
-        userAgent,
-        timestamp: serverTimestamp()
+    // Získání IP přes službu ipinfo.io
+    fetch("https://ipinfo.io/json?token=01e343317ddf30") // Token je veřejný
+      .then(res => res.json())
+      .then(ipData => {
+        visitorData.ip = ipData.ip || "unknown";
+        visitorData.city = ipData.city || "unknown";
+        visitorData.country = ipData.country || "unknown";
+        const newRef = push(ref(database, 'visits'));
+        set(newRef, visitorData);
+      })
+      .catch(() => {
+        const newRef = push(ref(database, 'visits'));
+        set(newRef, visitorData);
       });
-    })();
   </script>
 </body>
 </html>
