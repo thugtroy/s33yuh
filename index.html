@@ -1,33 +1,35 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="cs">
 <head>
-  <meta charset="UTF-8">
-  <title>s33yuh</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>s33yuh tracker</title>
   <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background-color: black;
-      height: 100%;
+    body, html {
+      margin: 0; padding: 0; height: 100%;
+      background: black;
       display: flex;
       justify-content: center;
       align-items: center;
+      overflow: hidden;
     }
     img {
       max-width: 100%;
-      height: auto;
+      max-height: 100vh;
+      object-fit: contain;
+      display: block;
     }
   </style>
 </head>
 <body>
-  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="s33yuh">
+
+  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="tracker image" />
 
   <script type="module">
-    // Import Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-    import { getDatabase, ref, push, set } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+    // Import Firebase SDK (používá CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
-    // Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
       authDomain: "s33yuh-3cb81.firebaseapp.com",
@@ -38,30 +40,22 @@
       appId: "1:1004328351276:web:549a980def23a4112c8389"
     };
 
-    // Init Firebase
     const app = initializeApp(firebaseConfig);
     const database = getDatabase(app);
 
-    // Získání dat o návštěvníku
-    const visitorData = {
-      userAgent: navigator.userAgent,
-      timestamp: new Date().toISOString()
-    };
+    function logVisit() {
+      const visitRef = ref(database, 'visits');
+      const visitData = {
+        timestamp: Date.now(),
+        userAgent: navigator.userAgent
+      };
 
-    // Získání IP přes službu ipinfo.io
-    fetch("https://ipinfo.io/json?token=01e343317ddf30") // Token je veřejný
-      .then(res => res.json())
-      .then(ipData => {
-        visitorData.ip = ipData.ip || "unknown";
-        visitorData.city = ipData.city || "unknown";
-        visitorData.country = ipData.country || "unknown";
-        const newRef = push(ref(database, 'visits'));
-        set(newRef, visitorData);
-      })
-      .catch(() => {
-        const newRef = push(ref(database, 'visits'));
-        set(newRef, visitorData);
-      });
+      push(visitRef, visitData)
+        .then(() => console.log('Visit logged'))
+        .catch(e => console.error('Failed to log visit:', e));
+    }
+
+    logVisit();
   </script>
 </body>
 </html>
