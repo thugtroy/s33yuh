@@ -1,34 +1,37 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>s33yuh Dashboard</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Dashboard návštěv</title>
   <style>
     body {
-      background-color: #000;
-      color: #fff;
+      background: black;
+      color: white;
       font-family: monospace;
       padding: 20px;
     }
     h1 {
-      color: #00ff88;
+      margin-bottom: 20px;
     }
-    .log {
-      border-bottom: 1px solid #333;
+    .visit {
+      border-bottom: 1px solid #444;
       margin-bottom: 10px;
       padding-bottom: 10px;
+    }
+    .timestamp {
+      color: #888;
+      font-size: 0.9em;
     }
   </style>
 </head>
 <body>
-  <h1>🌐 s33yuh – Visitor Log</h1>
-  <div id="logs">Načítání dat...</div>
+  <h1>Návštěvy</h1>
+  <div id="visits"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
-    import { format } from "https://cdn.skypack.dev/date-fns";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -42,25 +45,20 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const logsDiv = document.getElementById('logs');
+    const visitsRef = ref(db, 'visits');
+    const container = document.getElementById('visits');
 
-    logsDiv.innerHTML = "";
-
-    const visitRef = ref(db, "visits");
-    onChildAdded(visitRef, (snapshot) => {
+    onChildAdded(visitsRef, (snapshot) => {
       const data = snapshot.val();
-      const time = data.timestamp 
-        ? new Date(data.timestamp).toLocaleString()
-        : '🕓 unknown';
-      const entry = document.createElement('div');
-      entry.className = 'log';
-      entry.innerHTML = `
-        <strong>IP:</strong> ${data.ip || 'unknown'}<br>
-        <strong>Čas:</strong> ${time}<br>
-        <strong>User-Agent:</strong><br>
-        <code>${data.userAgent || 'unknown'}</code>
+      const div = document.createElement('div');
+      div.className = 'visit';
+      const date = new Date(data.timestamp || 0);
+      div.innerHTML = `
+        <div><strong>IP:</strong> ${data.ip || 'neznámá'}</div>
+        <div><strong>User-Agent:</strong> ${data.userAgent || 'neznámý'}</div>
+        <div class="timestamp"><strong>Čas:</strong> ${isNaN(date) ? 'neuvedeno' : date.toLocaleString()}</div>
       `;
-      logsDiv.prepend(entry);
+      container.prepend(div);
     });
   </script>
 </body>
