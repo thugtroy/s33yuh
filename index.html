@@ -1,34 +1,25 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>s33yuh tracker</title>
-  <style>
-    body, html {
-      margin: 0; padding: 0; height: 100%;
-      background: black;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-    }
-    img {
-      max-width: 100%;
-      max-height: 100vh;
-      object-fit: contain;
-      display: block;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>s33yuh tracker</title>
+<style>
+  body, html {
+    margin: 0; padding: 0; height: 100%; background: black; display: flex; justify-content: center; align-items: center;
+  }
+  img {
+    max-width: 100vw; max-height: 100vh; object-fit: contain;
+  }
+</style>
 </head>
 <body>
-
-  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="tracker image" />
+  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="Tracker Image" />
 
   <script type="module">
-    // Import Firebase SDK (používá CDN)
+    // Firebase SDK import from CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -40,19 +31,32 @@
       appId: "1:1004328351276:web:549a980def23a4112c8389"
     };
 
+    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
-    const database = getDatabase(app);
+    const db = getDatabase(app);
 
-    function logVisit() {
-      const visitRef = ref(database, 'visits');
-      const visitData = {
-        timestamp: Date.now(),
-        userAgent: navigator.userAgent
-      };
+    // Function to get user IP (free API)
+    async function getIP() {
+      try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        const data = await res.json();
+        return data.ip || 'unknown';
+      } catch {
+        return 'unknown';
+      }
+    }
 
-      push(visitRef, visitData)
-        .then(() => console.log('Visit logged'))
-        .catch(e => console.error('Failed to log visit:', e));
+    async function logVisit() {
+      const ip = await getIP();
+      const userAgent = navigator.userAgent || 'unknown';
+      const visitRef = ref(db, 'visits');
+      push(visitRef, {
+        ip,
+        userAgent,
+        timestamp: serverTimestamp()
+      }).catch(e => {
+        console.error('Failed to log visit:', e);
+      });
     }
 
     logVisit();
