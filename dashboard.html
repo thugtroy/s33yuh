@@ -3,16 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Dashboard návštěv</title>
+  <title>Realtime Dashboard</title>
   <style>
     body {
       background: black;
       color: white;
       font-family: monospace;
       padding: 20px;
-    }
-    h1 {
-      margin-bottom: 20px;
     }
     .visit {
       border-bottom: 1px solid #444;
@@ -26,30 +23,42 @@
   </style>
 </head>
 <body>
-  <h1>Návštěvy</h1>
+  <h1>Návštěvy (Realtime)</h1>
   <div id="visits"></div>
 
   <script type="module">
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
       authDomain: "s33yuh-3cb81.firebaseapp.com",
       databaseURL: "https://s33yuh-3cb81-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "s33yuh-3cb81",
-      storageBucket: "s33yuh-3cb81.appspot.com",
+      storageBucket: "s33yuh-3cb81.firebasestorage.app",
       messagingSenderId: "1004328351276",
       appId: "1:1004328351276:web:549a980def23a4112c8389"
     };
 
     const app = initializeApp(firebaseConfig);
+
+    // App Check (debug mode)
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'),
+      isTokenAutoRefreshEnabled: true
+    });
+
     const db = getDatabase(app);
     const visitsRef = ref(db, 'visits');
     const container = document.getElementById('visits');
 
     onChildAdded(visitsRef, (snapshot) => {
       const data = snapshot.val();
+      console.log("Z databáze přišlo:", snapshot.key, data);
+
       const div = document.createElement('div');
       div.className = 'visit';
       const date = new Date(data.timestamp || 0);
@@ -59,6 +68,8 @@
         <div class="timestamp"><strong>Čas:</strong> ${isNaN(date) ? 'neuvedeno' : date.toLocaleString()}</div>
       `;
       container.prepend(div);
+    }, (error) => {
+      console.error("Chyba při připojení k databázi:", error);
     });
   </script>
 </body>
