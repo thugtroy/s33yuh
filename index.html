@@ -17,9 +17,9 @@
   <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="Tracker Image" />
 
   <script type="module">
+    // Firebase SDK import from CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
-    import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -33,18 +33,9 @@
 
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
-
-    // Zapnout debug mode pro App Check s tvým tokenem
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = "d9d8fab4-f4f2-4915-b89f-62b2e38f12c5";
-
-    // Inicializace App Check s testovacím reCAPTCHA v3 klíčem (Google testovací klíč)
-    initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'),
-      isTokenAutoRefreshEnabled: true
-    });
-
     const db = getDatabase(app);
 
+    // Function to get user IP (free API)
     async function getIP() {
       try {
         const res = await fetch('https://api.ipify.org?format=json');
@@ -56,17 +47,13 @@
     }
 
     async function logVisit() {
-      console.log('logVisit started');
       const ip = await getIP();
       const userAgent = navigator.userAgent || 'unknown';
-      console.log('IP:', ip, 'UserAgent:', userAgent);
       const visitRef = ref(db, 'visits');
       push(visitRef, {
         ip,
         userAgent,
         timestamp: serverTimestamp()
-      }).then(() => {
-        console.log('Visit logged');
       }).catch(e => {
         console.error('Failed to log visit:', e);
       });
