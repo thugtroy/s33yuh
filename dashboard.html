@@ -42,6 +42,7 @@
   <h1>s33yuh</h1>
   <div id="visits"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.2/src/ua-parser.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
@@ -69,36 +70,26 @@
       localStorage.setItem(`nickname_${ip}`, name);
     }
 
-    // Funkce na rozpoznání přesného iPhonu/Androidu podle user agentu
-    function getDeviceModel(userAgent) {
-      userAgent = userAgent.toLowerCase();
-
-      // iPhone
-      if (/iphone/.test(userAgent)) {
-        // Extrahujeme verzi iOS z user agentu, např. "iphone os 15_4"
-        const match = userAgent.match(/iphone os (\d+)_?(\d+)?/);
-        if (match) {
-          return `iPhone iOS ${match[1]}${match[2] ? '.' + match[2] : ''}`;
-        }
-        return "iPhone (verze neznámá)";
+    // Funkce pro lepší rozpoznání iPhone modelu z device.model
+    function getDetailedIphoneModel(model) {
+      if (!model) return '';
+      // Příklad detekce: pokud model obsahuje číslo 13,14,15,16 tak to vrátíme, jinak jen iPhone
+      const match = model.match(/iPhone\s?(\d{1,2})/i);
+      if (match) {
+        return `iPhone ${match[1]}`;
       }
+      // fallback - jen iPhone, pokud model je 'iPhone'
+      if (/iphone/i.test(model)) return "iPhone";
+      return model;
+    }
 
-      // Android
-      if (/android/.test(userAgent)) {
-        // Extrahujeme verzi Androidu, např. "android 13"
-        const match = userAgent.match(/android (\d+)(\.\d+)?/);
-        if (match) {
-          return `Android ${match[1]}${match[2] || ''}`;
-        }
-        return "Android (verze neznámá)";
-      }
-
-      // Jiné zařízení (tablet, desktop atd.)
-      if (/ipad/.test(userAgent)) return "iPad";
-      if (/macintosh/.test(userAgent)) return "Mac";
-      if (/windows/.test(userAgent)) return "Windows PC";
-
-      return "Neznámé zařízení";
+    // Podobná detekce pro Android model (pouze jako příklad, můžeš rozšířit)
+    function getDetailedAndroidModel(model) {
+      if (!model) return '';
+      // Pokud model obsahuje číslo (např. Pixel 6), vrátíme ho, jinak jen Android
+      if (/\d/.test(model)) return model;
+      if (/android/i.test(model)) return "Android";
+      return model;
     }
 
     onChildAdded(visitsRef, (snapshot) => {
@@ -108,7 +99,33 @@
       const userAgent = data.userAgent || 'neznámý';
       const timestamp = new Date(data.timestamp || 0);
       const savedNickname = getNickname(ip);
-      const deviceModel = getDeviceModel(userAgent);
+
+      const parser = new UAParser(userAgent);
+      const device = parser.getDevice();
+      const os = parser.getOS();
+
+      let deviceModel = device.model || '';
+      const deviceVendor = device.vendor || '';
+      const osName = os.name || 'neuvedeno';
+      const osVersion = os.version || '';
+
+      // Detekce podrobného modelu pro iPhone/Android
+      if (/apple/i.test(deviceVendor) || /iphone/i.test(deviceModel)) {
+        deviceModel = getDetailedIphoneModel(deviceModel);
+      } else if (/android/i.test(osName.toLowerCase())) {
+        deviceModel = getDetailedAndroidModel(deviceModel);
+      }
+
+      // Jestliže nemáme model, ale user agent obsahuje "iPhone" + verzi, ber to taky
+      if (!deviceModel || deviceModel === '') {
+        if (/iPhone/.test(userAgent)) {
+          // Pokus o extrakci verze iOS a iPhonu z UA, základní přiblížení:
+          const iosVersionMatch = userAgent.match(/OS (\d+[_\d]*) like Mac OS X/i);
+          const iosVersion = iosVersionMatch ? iosVersionMatch[1].replace(/_/g, '.') : '';
+          deviceModel = "iPhone";
+          if (iosVersion) deviceModel += ` iOS ${iosVersion}`;
+        }
+      }
 
       const div = document.createElement('div');
       div.className = 'visit';
@@ -126,7 +143,8 @@
       div.innerHTML = `
         <div><strong>IP:</strong> ${ip}</div>
         <div><strong>Město:</strong> ${city}</div>
-        <div><strong>Typ zařízení:</strong> ${deviceModel}</div>
+        <div><strong>Zařízení:</strong> ${deviceVendor} ${deviceModel}</div>
+        <div><strong>OS:</strong> ${osName} ${osVersion}</div>
         <div><strong>User-Agent:</strong> ${userAgent}</div>
         <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
         <div class="label">Přezdívka pro tuto IP:</div>
