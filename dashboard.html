@@ -73,7 +73,7 @@
       const data = snapshot.val();
       const ip = data.ip || 'neznámá';
       const os = data.os || 'neuvedeno';
-      const device = data.device || '';
+      const device = data.device || 'neuvedeno';
       const city = data.city;
       const userAgent = data.userAgent || 'neznámý';
       const timestamp = new Date(data.timestamp || 0);
@@ -94,9 +94,9 @@
 
       div.innerHTML = `
         <div><strong>IP:</strong> ${ip}</div>
+        ${city && city !== 'neuvedeno' ? `<div><strong>Město:</strong> ${city}</div>` : ''}
+        <div><strong>Zařízení:</strong> ${device}</div>
         <div><strong>OS:</strong> ${os}</div>
-        ${device ? `<div><strong>Typ telefonu:</strong> ${device}</div>` : ''}
-        ${city ? `<div><strong>Město:</strong> ${city}</div>` : ''}
         <div><strong>User-Agent:</strong> ${userAgent}</div>
         <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
         <div class="label">Přezdívka pro tuto IP:</div>

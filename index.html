@@ -4,47 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>s33yuh</title>
-  <style>
-    body {
-      background: black;
-      color: white;
-      font-family: monospace;
-      padding: 20px;
-    }
-    .visit {
-      border-bottom: 1px solid #444;
-      margin-bottom: 10px;
-      padding-bottom: 10px;
-    }
-    .timestamp {
-      color: #888;
-      font-size: 0.9em;
-    }
-    .label {
-      display: inline-block;
-      margin-top: 5px;
-      font-size: 0.9em;
-      color: #aaa;
-    }
-    .nickname-input {
-      background: #222;
-      border: 1px solid #555;
-      color: white;
-      padding: 4px 8px;
-      margin-top: 5px;
-      font-family: monospace;
-      width: 100%;
-      box-sizing: border-box;
-    }
-  </style>
-</head>
-<body>
-  <h1>Návštěvy (Realtime)</h1>
-  <div id="visits"></div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -59,77 +21,59 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const visitsRef = ref(db, 'visits');
-    const container = document.getElementById('visits');
 
-    function getNickname(ip) {
-      return localStorage.getItem(`nickname_${ip}`) || '';
+    function getOS(userAgent) {
+      const ua = userAgent.toLowerCase();
+      if (ua.includes('iphone')) return 'iOS';
+      if (ua.includes('android')) return 'Android';
+      if (ua.includes('windows')) return 'Windows';
+      if (ua.includes('mac os')) return 'macOS';
+      if (ua.includes('linux')) return 'Linux';
+      return 'Neznámý';
     }
 
-    function saveNickname(ip, name) {
-      localStorage.setItem(`nickname_${ip}`, name);
+    function getDevice(userAgent) {
+      const ua = userAgent.toLowerCase();
+      if (ua.includes('iphone')) return 'iPhone';
+      if (ua.includes('ipad')) return 'iPad';
+      if (ua.includes('android') && ua.includes('mobile')) return 'Android Phone';
+      if (ua.includes('android')) return 'Android Tablet';
+      if (ua.includes('windows') || ua.includes('mac') || ua.includes('linux')) return 'Desktop';
+      return 'Neznámé';
     }
 
-    function detectDevice(ua) {
-      ua = ua.toLowerCase();
-      let device = 'Neznámé zařízení';
-      let os = 'Neznámý OS';
-
-      if (ua.includes('iphone')) {
-        device = 'iPhone';
-        os = 'iOS';
-      } else if (ua.includes('ipad')) {
-        device = 'iPad';
-        os = 'iOS';
-      } else if (ua.includes('android')) {
-        device = 'Android telefon';
-        os = 'Android';
-      } else if (ua.includes('windows')) {
-        device = 'Počítač';
-        os = 'Windows';
-      } else if (ua.includes('macintosh') || ua.includes('mac os')) {
-        device = 'Mac';
-        os = 'macOS';
-      } else if (ua.includes('linux')) {
-        device = 'Linux stroj';
-        os = 'Linux';
+    async function getCity() {
+      try {
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+        return data.city || 'neuvedeno';
+      } catch {
+        return 'neuvedeno';
       }
-
-      return { device, os };
     }
 
-    onChildAdded(visitsRef, (snapshot) => {
-      const data = snapshot.val();
-      const ip = data.ip || 'neznámá';
-      const userAgent = data.userAgent || 'neznámý';
-      const timestamp = new Date(data.timestamp || 0);
-      const savedNickname = getNickname(ip);
-      const { device, os } = detectDevice(userAgent);
+    async function logVisit() {
+      const ipReq = await fetch("https://api.ipify.org?format=json");
+      const ipData = await ipReq.json();
+      const userAgent = navigator.userAgent;
+      const os = getOS(userAgent);
+      const device = getDevice(userAgent);
+      const city = await getCity();
 
-      const div = document.createElement('div');
-      div.className = 'visit';
-
-      const nicknameInput = document.createElement('input');
-      nicknameInput.type = 'text';
-      nicknameInput.placeholder = 'Přezdívka';
-      nicknameInput.className = 'nickname-input';
-      nicknameInput.value = savedNickname;
-
-      nicknameInput.addEventListener('input', () => {
-        saveNickname(ip, nicknameInput.value);
+      push(visitsRef, {
+        ip: ipData.ip,
+        userAgent: userAgent,
+        os: os,
+        device: device,
+        city: city,
+        timestamp: Date.now()
       });
+    }
 
-      div.innerHTML = `
-        <div><strong>IP:</strong> ${ip}</div>
-        <div><strong>Zařízení:</strong> ${device} (${os})</div>
-        <div><strong>User-Agent:</strong> ${userAgent}</div>
-        <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
-        <div class="label">Přezdívka pro tuto IP:</div>
-      `;
-      div.appendChild(nicknameInput);
-      container.prepend(div);
-    }, (error) => {
-      console.error("Chyba při připojení k databázi:", error);
-    });
+    logVisit();
   </script>
+</head>
+<body style="background:black;color:white;font-family:monospace;text-align:center;padding-top:20vh">
+  <h1>s33yuh</h1>
 </body>
 </html>
