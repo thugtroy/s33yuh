@@ -69,35 +69,36 @@
       localStorage.setItem(`nickname_${ip}`, name);
     }
 
-    // Přesné rozpoznání typu zařízení a modelu podle user agentu
-    function getDeviceInfo(userAgent) {
+    // Funkce na rozpoznání přesného iPhonu/Androidu podle user agentu
+    function getDeviceModel(userAgent) {
       userAgent = userAgent.toLowerCase();
 
+      // iPhone
       if (/iphone/.test(userAgent)) {
-        const iosVerMatch = userAgent.match(/iphone os (\d+)_?(\d+)?/);
-        if (iosVerMatch) {
-          const major = iosVerMatch[1];
-          const minor = iosVerMatch[2] || '0';
-          return `iPhone iOS ${major}.${minor}`;
+        // Extrahujeme verzi iOS z user agentu, např. "iphone os 15_4"
+        const match = userAgent.match(/iphone os (\d+)_?(\d+)?/);
+        if (match) {
+          return `iPhone iOS ${match[1]}${match[2] ? '.' + match[2] : ''}`;
         }
-        return 'iPhone (neznámá verze iOS)';
+        return "iPhone (verze neznámá)";
       }
 
+      // Android
       if (/android/.test(userAgent)) {
-        const androidModelMatch = userAgent.match(/android [\d\.]+; ([^;)\]]+)/);
-        if (androidModelMatch) {
-          return `Android ${androidModelMatch[1].trim()}`;
+        // Extrahujeme verzi Androidu, např. "android 13"
+        const match = userAgent.match(/android (\d+)(\.\d+)?/);
+        if (match) {
+          return `Android ${match[1]}${match[2] || ''}`;
         }
-        return 'Android (neznámý model)';
+        return "Android (verze neznámá)";
       }
 
-      if (/ipad/.test(userAgent)) return 'iPad';
+      // Jiné zařízení (tablet, desktop atd.)
+      if (/ipad/.test(userAgent)) return "iPad";
+      if (/macintosh/.test(userAgent)) return "Mac";
+      if (/windows/.test(userAgent)) return "Windows PC";
 
-      if (/tablet/.test(userAgent)) return 'Tablet';
-
-      if (/mobile/.test(userAgent)) return 'Mobil';
-
-      return 'Desktop';
+      return "Neznámé zařízení";
     }
 
     onChildAdded(visitsRef, (snapshot) => {
@@ -107,7 +108,7 @@
       const userAgent = data.userAgent || 'neznámý';
       const timestamp = new Date(data.timestamp || 0);
       const savedNickname = getNickname(ip);
-      const deviceInfo = getDeviceInfo(userAgent);
+      const deviceModel = getDeviceModel(userAgent);
 
       const div = document.createElement('div');
       div.className = 'visit';
@@ -125,7 +126,7 @@
       div.innerHTML = `
         <div><strong>IP:</strong> ${ip}</div>
         <div><strong>Město:</strong> ${city}</div>
-        <div><strong>Zařízení:</strong> ${deviceInfo}</div>
+        <div><strong>Typ zařízení:</strong> ${deviceModel}</div>
         <div><strong>User-Agent:</strong> ${userAgent}</div>
         <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
         <div class="label">Přezdívka pro tuto IP:</div>
