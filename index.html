@@ -34,8 +34,8 @@
     // Initialize Firebase
     const app = initializeApp(firebaseConfig);
 
-    // Zapnout debug mode pro App Check
-    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    // Zapnout debug mode pro App Check s tvým tokenem
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = "d9d8fab4-f4f2-4915-b89f-62b2e38f12c5";
 
     // Inicializace App Check s testovacím reCAPTCHA v3 klíčem (Google testovací klíč)
     initializeAppCheck(app, {
