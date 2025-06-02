@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Realtime Dashboard</title>
+  <title>s33yuh</title>
   <style>
     body {
       background: black;
@@ -39,7 +39,7 @@
   </style>
 </head>
 <body>
-  <h1>Návštěvy (Realtime)</h1>
+  <h1>s33yuh</h1>
   <div id="visits"></div>
 
   <script type="module">
@@ -69,22 +69,15 @@
       localStorage.setItem(`nickname_${ip}`, name);
     }
 
-    // Jednoduchá funkce na rozpoznání zařízení podle user agentu
-    function getDeviceType(userAgent) {
-      userAgent = userAgent.toLowerCase();
-      if (/mobile|iphone|ipod|android|blackberry|windows phone/.test(userAgent)) return 'Mobil';
-      if (/ipad|tablet/.test(userAgent)) return 'Tablet';
-      return 'Desktop';
-    }
-
     onChildAdded(visitsRef, (snapshot) => {
       const data = snapshot.val();
       const ip = data.ip || 'neznámá';
-      const city = data.city || 'neuvedeno';
+      const os = data.os || 'neuvedeno';
+      const device = data.device || '';
+      const city = data.city;
       const userAgent = data.userAgent || 'neznámý';
       const timestamp = new Date(data.timestamp || 0);
       const savedNickname = getNickname(ip);
-      const deviceType = getDeviceType(userAgent);
 
       const div = document.createElement('div');
       div.className = 'visit';
@@ -101,8 +94,9 @@
 
       div.innerHTML = `
         <div><strong>IP:</strong> ${ip}</div>
-        <div><strong>Město:</strong> ${city}</div>
-        <div><strong>Zařízení:</strong> ${deviceType}</div>
+        <div><strong>OS:</strong> ${os}</div>
+        ${device ? `<div><strong>Typ telefonu:</strong> ${device}</div>` : ''}
+        ${city ? `<div><strong>Město:</strong> ${city}</div>` : ''}
         <div><strong>User-Agent:</strong> ${userAgent}</div>
         <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
         <div class="label">Přezdívka pro tuto IP:</div>
