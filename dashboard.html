@@ -2,8 +2,7 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>s33yuh</title>
+  <title>Dashboard – s33yuh</title>
   <style>
     body {
       background: black;
@@ -12,40 +11,49 @@
       padding: 20px;
     }
     .visit {
-      border-bottom: 1px solid #444;
+      border-bottom: 1px solid #333;
+      padding: 10px 0;
       margin-bottom: 10px;
-      padding-bottom: 10px;
     }
-    .timestamp {
-      color: #888;
-      font-size: 0.9em;
-    }
-    .label {
-      display: inline-block;
-      margin-top: 5px;
-      font-size: 0.9em;
-      color: #aaa;
-    }
-    .nickname-input {
-      background: #222;
-      border: 1px solid #555;
-      color: white;
-      padding: 4px 8px;
-      margin-top: 5px;
-      font-family: monospace;
+    audio {
+      margin-top: 8px;
       width: 100%;
-      box-sizing: border-box;
+    }
+    #login {
+      display: flex;
+      flex-direction: column;
+      max-width: 300px;
+      margin: 100px auto;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      font-family: monospace;
+    }
+    button {
+      background: white;
+      color: black;
+      border: none;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>s33yuh</h1>
-  <div id="visits"></div>
+  <h1>Dashboard – s33yuh</h1>
 
-  <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.2/src/ua-parser.min.js"></script>
+  <div id="login">
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Heslo" />
+    <button id="loginBtn">Přihlásit</button>
+  </div>
+
+  <div id="visits" style="display: none;"></div>
+
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+    import { getStorage, ref as storageRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -59,101 +67,68 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const visitsRef = ref(db, 'visits');
-    const container = document.getElementById('visits');
+    const storage = getStorage(app);
+    const auth = getAuth(app);
 
-    function getNickname(ip) {
-      return localStorage.getItem(`nickname_${ip}`) || '';
-    }
+    const loginBox = document.getElementById('login');
+    const visitsBox = document.getElementById('visits');
 
-    function saveNickname(ip, name) {
-      localStorage.setItem(`nickname_${ip}`, name);
-    }
-
-    // Funkce pro lepší rozpoznání iPhone modelu z device.model
-    function getDetailedIphoneModel(model) {
-      if (!model) return '';
-      // Příklad detekce: pokud model obsahuje číslo 13,14,15,16 tak to vrátíme, jinak jen iPhone
-      const match = model.match(/iPhone\s?(\d{1,2})/i);
-      if (match) {
-        return `iPhone ${match[1]}`;
+    document.getElementById('loginBtn').addEventListener('click', async () => {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (e) {
+        alert("Nepodařilo se přihlásit.");
+        console.error(e);
       }
-      // fallback - jen iPhone, pokud model je 'iPhone'
-      if (/iphone/i.test(model)) return "iPhone";
-      return model;
-    }
-
-    // Podobná detekce pro Android model (pouze jako příklad, můžeš rozšířit)
-    function getDetailedAndroidModel(model) {
-      if (!model) return '';
-      // Pokud model obsahuje číslo (např. Pixel 6), vrátíme ho, jinak jen Android
-      if (/\d/.test(model)) return model;
-      if (/android/i.test(model)) return "Android";
-      return model;
-    }
-
-    onChildAdded(visitsRef, (snapshot) => {
-      const data = snapshot.val();
-      const ip = data.ip || 'neznámá';
-      const city = data.city || 'neuvedeno';
-      const userAgent = data.userAgent || 'neznámý';
-      const timestamp = new Date(data.timestamp || 0);
-      const savedNickname = getNickname(ip);
-
-      const parser = new UAParser(userAgent);
-      const device = parser.getDevice();
-      const os = parser.getOS();
-
-      let deviceModel = device.model || '';
-      const deviceVendor = device.vendor || '';
-      const osName = os.name || 'neuvedeno';
-      const osVersion = os.version || '';
-
-      // Detekce podrobného modelu pro iPhone/Android
-      if (/apple/i.test(deviceVendor) || /iphone/i.test(deviceModel)) {
-        deviceModel = getDetailedIphoneModel(deviceModel);
-      } else if (/android/i.test(osName.toLowerCase())) {
-        deviceModel = getDetailedAndroidModel(deviceModel);
-      }
-
-      // Jestliže nemáme model, ale user agent obsahuje "iPhone" + verzi, ber to taky
-      if (!deviceModel || deviceModel === '') {
-        if (/iPhone/.test(userAgent)) {
-          // Pokus o extrakci verze iOS a iPhonu z UA, základní přiblížení:
-          const iosVersionMatch = userAgent.match(/OS (\d+[_\d]*) like Mac OS X/i);
-          const iosVersion = iosVersionMatch ? iosVersionMatch[1].replace(/_/g, '.') : '';
-          deviceModel = "iPhone";
-          if (iosVersion) deviceModel += ` iOS ${iosVersion}`;
-        }
-      }
-
-      const div = document.createElement('div');
-      div.className = 'visit';
-
-      const nicknameInput = document.createElement('input');
-      nicknameInput.type = 'text';
-      nicknameInput.placeholder = 'Přezdívka';
-      nicknameInput.className = 'nickname-input';
-      nicknameInput.value = savedNickname;
-
-      nicknameInput.addEventListener('input', () => {
-        saveNickname(ip, nicknameInput.value);
-      });
-
-      div.innerHTML = `
-        <div><strong>IP:</strong> ${ip}</div>
-        <div><strong>Město:</strong> ${city}</div>
-        <div><strong>Zařízení:</strong> ${deviceVendor} ${deviceModel}</div>
-        <div><strong>OS:</strong> ${osName} ${osVersion}</div>
-        <div><strong>User-Agent:</strong> ${userAgent}</div>
-        <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
-        <div class="label">Přezdívka pro tuto IP:</div>
-      `;
-      div.appendChild(nicknameInput);
-      container.prepend(div);
-    }, (error) => {
-      console.error("Chyba při připojení k databázi:", error);
     });
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        loginBox.style.display = 'none';
+        visitsBox.style.display = 'block';
+        loadVisits();
+      } else {
+        loginBox.style.display = 'flex';
+        visitsBox.style.display = 'none';
+      }
+    });
+
+    function loadVisits() {
+      const visitsRef = ref(db, 'visits');
+      onChildAdded(visitsRef, async (snapshot) => {
+        const data = snapshot.val();
+        const container = document.getElementById('visits');
+        const div = document.createElement('div');
+        div.className = 'visit';
+
+        const ip = data.ip || 'neznámá';
+        const city = data.city || 'neznámé město';
+        const ua = data.userAgent || 'neznámý';
+        const time = new Date(data.timestamp || 0).toLocaleString();
+
+        let audioTag = '';
+        const recordingsPath = `recordings/recording_${snapshot.key}.webm`;
+
+        try {
+          const url = await getDownloadURL(storageRef(storage, recordingsPath));
+          audioTag = `<audio controls src="${url}"></audio>`;
+        } catch (e) {
+          audioTag = `<div style="color: gray;">(žádný záznam)</div>`;
+        }
+
+        div.innerHTML = `
+          <div><strong>IP:</strong> ${ip}</div>
+          <div><strong>Město:</strong> ${city}</div>
+          <div><strong>User-Agent:</strong> ${ua}</div>
+          <div><strong>Čas:</strong> ${time}</div>
+          ${audioTag}
+        `;
+
+        container.prepend(div);
+      });
+    }
   </script>
 </body>
 </html>
