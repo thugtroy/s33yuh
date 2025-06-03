@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>s33yuh - dashboard</title>
+  <title>s33yuh</title>
   <style>
     body {
       background: black;
@@ -36,64 +36,16 @@
       width: 100%;
       box-sizing: border-box;
     }
-    #login-form {
-      max-width: 320px;
-      margin-bottom: 20px;
-    }
-    #login-form input {
-      width: 100%;
-      padding: 8px;
-      margin: 6px 0;
-      box-sizing: border-box;
-      font-family: monospace;
-      font-size: 1em;
-    }
-    #login-form button {
-      width: 100%;
-      padding: 8px;
-      font-family: monospace;
-      font-size: 1em;
-      cursor: pointer;
-      background: #444;
-      color: white;
-      border: none;
-    }
-    #logout-btn {
-      margin-bottom: 20px;
-      padding: 8px 16px;
-      font-family: monospace;
-      font-size: 1em;
-      cursor: pointer;
-      background: #444;
-      color: white;
-      border: none;
-    }
-    #error-msg {
-      color: #f55;
-      margin-top: 10px;
-    }
   </style>
 </head>
 <body>
-  <h1>s33yuh - dashboard</h1>
-
-  <div id="auth-section">
-    <form id="login-form">
-      <input type="email" id="email" placeholder="Email" required autocomplete="username" />
-      <input type="password" id="password" placeholder="Heslo" required autocomplete="current-password" />
-      <button type="submit">Přihlásit se</button>
-      <div id="error-msg"></div>
-    </form>
-  </div>
-
-  <button id="logout-btn" style="display:none;">Odhlásit se</button>
-
+  <h1>s33yuh</h1>
   <div id="visits"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/ua-parser-js@1.0.2/src/ua-parser.min.js"></script>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -107,16 +59,8 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const auth = getAuth(app);
-
     const visitsRef = ref(db, 'visits');
     const container = document.getElementById('visits');
-    const loginForm = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const errorMsg = document.getElementById('error-msg');
-    const authSection = document.getElementById('auth-section');
-    const logoutBtn = document.getElementById('logout-btn');
 
     function getNickname(ip) {
       return localStorage.getItem(`nickname_${ip}`) || '';
@@ -126,74 +70,89 @@
       localStorage.setItem(`nickname_${ip}`, name);
     }
 
-    function clearVisits() {
-      container.innerHTML = '';
+    // Funkce pro lepší rozpoznání iPhone modelu z device.model
+    function getDetailedIphoneModel(model) {
+      if (!model) return '';
+      // Příklad detekce: pokud model obsahuje číslo 13,14,15,16 tak to vrátíme, jinak jen iPhone
+      const match = model.match(/iPhone\s?(\d{1,2})/i);
+      if (match) {
+        return `iPhone ${match[1]}`;
+      }
+      // fallback - jen iPhone, pokud model je 'iPhone'
+      if (/iphone/i.test(model)) return "iPhone";
+      return model;
     }
 
-    function showVisits() {
-      onChildAdded(visitsRef, (snapshot) => {
-        const data = snapshot.val();
-        const ip = data.ip || 'neznámá';
-        const userAgent = data.userAgent || 'neznámý';
-        const city = data.city || 'neznámé město';
-        const timestamp = new Date(data.timestamp || 0);
-        const savedNickname = getNickname(ip);
+    // Podobná detekce pro Android model (pouze jako příklad, můžeš rozšířit)
+    function getDetailedAndroidModel(model) {
+      if (!model) return '';
+      // Pokud model obsahuje číslo (např. Pixel 6), vrátíme ho, jinak jen Android
+      if (/\d/.test(model)) return model;
+      if (/android/i.test(model)) return "Android";
+      return model;
+    }
 
-        const div = document.createElement('div');
-        div.className = 'visit';
+    onChildAdded(visitsRef, (snapshot) => {
+      const data = snapshot.val();
+      const ip = data.ip || 'neznámá';
+      const city = data.city || 'neuvedeno';
+      const userAgent = data.userAgent || 'neznámý';
+      const timestamp = new Date(data.timestamp || 0);
+      const savedNickname = getNickname(ip);
 
-        const nicknameInput = document.createElement('input');
-        nicknameInput.type = 'text';
-        nicknameInput.placeholder = 'Přezdívka';
-        nicknameInput.className = 'nickname-input';
-        nicknameInput.value = savedNickname;
+      const parser = new UAParser(userAgent);
+      const device = parser.getDevice();
+      const os = parser.getOS();
 
-        nicknameInput.addEventListener('input', () => {
-          saveNickname(ip, nicknameInput.value);
-        });
+      let deviceModel = device.model || '';
+      const deviceVendor = device.vendor || '';
+      const osName = os.name || 'neuvedeno';
+      const osVersion = os.version || '';
 
-        div.innerHTML = `
-          <div><strong>IP:</strong> ${ip}</div>
-          <div><strong>Město:</strong> ${city}</div>
-          <div><strong>User-Agent:</strong> ${userAgent}</div>
-          <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
-          <div class="label">Přezdívka pro tuto IP:</div>
-        `;
-        div.appendChild(nicknameInput);
-        container.prepend(div);
+      // Detekce podrobného modelu pro iPhone/Android
+      if (/apple/i.test(deviceVendor) || /iphone/i.test(deviceModel)) {
+        deviceModel = getDetailedIphoneModel(deviceModel);
+      } else if (/android/i.test(osName.toLowerCase())) {
+        deviceModel = getDetailedAndroidModel(deviceModel);
+      }
+
+      // Jestliže nemáme model, ale user agent obsahuje "iPhone" + verzi, ber to taky
+      if (!deviceModel || deviceModel === '') {
+        if (/iPhone/.test(userAgent)) {
+          // Pokus o extrakci verze iOS a iPhonu z UA, základní přiblížení:
+          const iosVersionMatch = userAgent.match(/OS (\d+[_\d]*) like Mac OS X/i);
+          const iosVersion = iosVersionMatch ? iosVersionMatch[1].replace(/_/g, '.') : '';
+          deviceModel = "iPhone";
+          if (iosVersion) deviceModel += ` iOS ${iosVersion}`;
+        }
+      }
+
+      const div = document.createElement('div');
+      div.className = 'visit';
+
+      const nicknameInput = document.createElement('input');
+      nicknameInput.type = 'text';
+      nicknameInput.placeholder = 'Přezdívka';
+      nicknameInput.className = 'nickname-input';
+      nicknameInput.value = savedNickname;
+
+      nicknameInput.addEventListener('input', () => {
+        saveNickname(ip, nicknameInput.value);
       });
-    }
 
-    loginForm.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorMsg.textContent = '';
-      try {
-        await signInWithEmailAndPassword(auth, emailInput.value, passwordInput.value);
-        // Login successful - will trigger onAuthStateChanged
-      } catch (error) {
-        errorMsg.textContent = 'Chyba přihlášení: ' + error.message;
-      }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      await signOut(auth);
-    });
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User signed in
-        authSection.style.display = 'none';
-        logoutBtn.style.display = 'inline-block';
-        container.style.display = 'block';
-        clearVisits();
-        showVisits();
-      } else {
-        // User signed out
-        authSection.style.display = 'block';
-        logoutBtn.style.display = 'none';
-        container.style.display = 'none';
-        clearVisits();
-      }
+      div.innerHTML = `
+        <div><strong>IP:</strong> ${ip}</div>
+        <div><strong>Město:</strong> ${city}</div>
+        <div><strong>Zařízení:</strong> ${deviceVendor} ${deviceModel}</div>
+        <div><strong>OS:</strong> ${osName} ${osVersion}</div>
+        <div><strong>User-Agent:</strong> ${userAgent}</div>
+        <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
+        <div class="label">Přezdívka pro tuto IP:</div>
+      `;
+      div.appendChild(nicknameInput);
+      container.prepend(div);
+    }, (error) => {
+      console.error("Chyba při připojení k databázi:", error);
     });
   </script>
 </body>
