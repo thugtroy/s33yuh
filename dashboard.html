@@ -2,7 +2,8 @@
 <html lang="cs">
 <head>
   <meta charset="UTF-8" />
-  <title>Dashboard – s33yuh</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Realtime Dashboard</title>
   <style>
     body {
       background: black;
@@ -11,49 +12,39 @@
       padding: 20px;
     }
     .visit {
-      border-bottom: 1px solid #333;
-      padding: 10px 0;
+      border-bottom: 1px solid #444;
       margin-bottom: 10px;
+      padding-bottom: 10px;
     }
-    audio {
-      margin-top: 8px;
-      width: 100%;
+    .timestamp {
+      color: #888;
+      font-size: 0.9em;
     }
-    #login {
-      display: flex;
-      flex-direction: column;
-      max-width: 300px;
-      margin: 100px auto;
+    .label {
+      display: inline-block;
+      margin-top: 5px;
+      font-size: 0.9em;
+      color: #aaa;
     }
-    input, button {
-      padding: 10px;
-      margin: 5px 0;
+    .nickname-input {
+      background: #222;
+      border: 1px solid #555;
+      color: white;
+      padding: 4px 8px;
+      margin-top: 5px;
       font-family: monospace;
-    }
-    button {
-      background: white;
-      color: black;
-      border: none;
-      cursor: pointer;
+      width: 100%;
+      box-sizing: border-box;
     }
   </style>
 </head>
 <body>
-  <h1>Dashboard – s33yuh</h1>
-
-  <div id="login">
-    <input type="email" id="email" placeholder="Email" />
-    <input type="password" id="password" placeholder="Heslo" />
-    <button id="loginBtn">Přihlásit</button>
-  </div>
-
-  <div id="visits" style="display: none;"></div>
+  <h1>Návštěvy (Realtime)</h1>
+  <div id="visits"></div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
     import { getDatabase, ref, onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
-    import { getStorage, ref as storageRef, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
-    import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyB-RcliC7vlLVsR7arV0Z-Z2ywvFytvwOU",
@@ -67,68 +58,60 @@
 
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
-    const storage = getStorage(app);
-    const auth = getAuth(app);
+    const visitsRef = ref(db, 'visits');
+    const container = document.getElementById('visits');
 
-    const loginBox = document.getElementById('login');
-    const visitsBox = document.getElementById('visits');
-
-    document.getElementById('loginBtn').addEventListener('click', async () => {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value.trim();
-      try {
-        await signInWithEmailAndPassword(auth, email, password);
-      } catch (e) {
-        alert("Nepodařilo se přihlásit.");
-        console.error(e);
-      }
-    });
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        loginBox.style.display = 'none';
-        visitsBox.style.display = 'block';
-        loadVisits();
-      } else {
-        loginBox.style.display = 'flex';
-        visitsBox.style.display = 'none';
-      }
-    });
-
-    function loadVisits() {
-      const visitsRef = ref(db, 'visits');
-      onChildAdded(visitsRef, async (snapshot) => {
-        const data = snapshot.val();
-        const container = document.getElementById('visits');
-        const div = document.createElement('div');
-        div.className = 'visit';
-
-        const ip = data.ip || 'neznámá';
-        const city = data.city || 'neznámé město';
-        const ua = data.userAgent || 'neznámý';
-        const time = new Date(data.timestamp || 0).toLocaleString();
-
-        let audioTag = '';
-        const recordingsPath = `recordings/recording_${snapshot.key}.webm`;
-
-        try {
-          const url = await getDownloadURL(storageRef(storage, recordingsPath));
-          audioTag = `<audio controls src="${url}"></audio>`;
-        } catch (e) {
-          audioTag = `<div style="color: gray;">(žádný záznam)</div>`;
-        }
-
-        div.innerHTML = `
-          <div><strong>IP:</strong> ${ip}</div>
-          <div><strong>Město:</strong> ${city}</div>
-          <div><strong>User-Agent:</strong> ${ua}</div>
-          <div><strong>Čas:</strong> ${time}</div>
-          ${audioTag}
-        `;
-
-        container.prepend(div);
-      });
+    function getNickname(ip) {
+      return localStorage.getItem(`nickname_${ip}`) || '';
     }
+
+    function saveNickname(ip, name) {
+      localStorage.setItem(`nickname_${ip}`, name);
+    }
+
+    // Jednoduchá funkce na rozpoznání zařízení podle user agentu
+    function getDeviceType(userAgent) {
+      userAgent = userAgent.toLowerCase();
+      if (/mobile|iphone|ipod|android|blackberry|windows phone/.test(userAgent)) return 'Mobil';
+      if (/ipad|tablet/.test(userAgent)) return 'Tablet';
+      return 'Desktop';
+    }
+
+    onChildAdded(visitsRef, (snapshot) => {
+      const data = snapshot.val();
+      const ip = data.ip || 'neznámá';
+      const city = data.city || 'neuvedeno';
+      const userAgent = data.userAgent || 'neznámý';
+      const timestamp = new Date(data.timestamp || 0);
+      const savedNickname = getNickname(ip);
+      const deviceType = getDeviceType(userAgent);
+
+      const div = document.createElement('div');
+      div.className = 'visit';
+
+      const nicknameInput = document.createElement('input');
+      nicknameInput.type = 'text';
+      nicknameInput.placeholder = 'Přezdívka';
+      nicknameInput.className = 'nickname-input';
+      nicknameInput.value = savedNickname;
+
+      nicknameInput.addEventListener('input', () => {
+        saveNickname(ip, nicknameInput.value);
+      });
+
+      div.innerHTML = `
+        <div><strong>IP:</strong> ${ip}</div>
+        <div><strong>Město:</strong> ${city}</div>
+        <div><strong>Zařízení:</strong> ${deviceType}</div>
+        <div><strong>User-Agent:</strong> ${userAgent}</div>
+        <div class="timestamp"><strong>Čas:</strong> ${isNaN(timestamp) ? 'neuvedeno' : timestamp.toLocaleString()}</div>
+        <div class="label">Přezdívka pro tuto IP:</div>
+      `;
+      div.appendChild(nicknameInput);
+      container.prepend(div);
+    }, (error) => {
+      console.error("Chyba při připojení k databázi:", error);
+    });
   </script>
 </body>
 </html>
